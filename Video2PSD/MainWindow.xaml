@@ -1,0 +1,50 @@
+﻿<Window x:Name="MainWindow1" x:Class="Video2PSD.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:wf="clr-namespace:System.Windows.Forms;assembly=System.Windows.Forms"
+        Title="Video2PSD" Height="509.76" Width="735.21">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="30" />
+        </Grid.RowDefinitions>
+        <Menu Grid.Row="0" VerticalAlignment="Top">
+            <MenuItem Header="_File">
+                <MenuItem x:Name="OpenVideoMenuItem" Header="_Open Video..." Click="OpenVideoMenuItem_Click" />
+                <MenuItem Header="_Add Subtitles..." />
+                <Separator />
+                <MenuItem Header="_Save Project" />
+                <MenuItem Header="Save Project _As..." />
+                <MenuItem Header="_Export PSD..." />
+                <Separator />
+                <MenuItem Header="_Quit" />
+            </MenuItem>
+        </Menu>
+        <Slider Margin="5,5,5,5" Grid.Row="2"/>
+        <Grid Grid.Row="3">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="30" />
+                <ColumnDefinition Width="30" />
+                <ColumnDefinition Width="30" />
+                <ColumnDefinition Width="30" />
+                <ColumnDefinition Width="30" />
+                <ColumnDefinition Width="30" />
+                <ColumnDefinition Width="30" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="30" />
+            </Grid.ColumnDefinitions>
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Content="Beg" HorizontalAlignment="Left" Margin="2,2,2,2" Grid.Column="0" Width="26" Height="26"/>
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Content="Back" HorizontalAlignment="Left" Margin="2,2,2,2" Grid.Column="1" Width="26" Height="26"/>
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Content="Pl" HorizontalAlignment="Left" Margin="2,2,2,2" Grid.Column="2" Width="26" Height="26"/>
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Content="Fwd" HorizontalAlignment="Left" Margin="2,2,2,2" Grid.Column="3" Width="26" Height="26"/>
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Content="End" HorizontalAlignment="Left" Margin="2,2,2,2" Grid.Column="4" Width="26" Height="26"/>
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Content="A" HorizontalAlignment="Left" Margin="2,2,2,2" Grid.Column="5" Width="26" Height="26"/>
+            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Content="B" HorizontalAlignment="Left" Margin="2,2,2,2" Grid.Column="6" Width="26" Height="26"/>
+        </Grid>
+        <WindowsFormsHost Grid.Row="1">
+            <wf:Panel x:Name="VideoPanel" Dock="Fill" BackColor="Black" />
+        </WindowsFormsHost>
+    </Grid>
+</Window>
