@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -15,7 +16,7 @@ namespace Video2PSD
     /// <summary>
     /// A high quality, DirectShow based video player that uses the LibAV/DirectVobSub/madVR graph used by MPC-HC in KCP
     /// </summary>
-    class HQDShowPlayer
+    class HQDShowPlayer : IDisposable
     {
         private Control RenderWindow;
         private string FileName;
@@ -43,6 +44,19 @@ namespace Video2PSD
             RenderWindow.SizeChanged += VideoWindowSizeChanged;
         }
 
+        public void Dispose()
+        {
+            Stop();
+
+            lock (this)
+            {
+                Closing = true;
+            }
+            if (MRE != null) MRE.Set();
+            
+            TeardownGraph();
+        }
+
         public bool OpenFile(string pathToMedia)
         {
             if (GetState() != FilterState.Stopped)
@@ -63,6 +77,8 @@ namespace Video2PSD
             MRE = new ManualResetEvent(false);
             MRE.SafeWaitHandle = new Microsoft.Win32.SafeHandles.SafeWaitHandle(hEvent, true);
 
+            if (Closing) Closing = false;
+
             Thread t = new Thread(this.EventWait);
             t.Name = "Media Event Thread";
             t.Start();
@@ -72,7 +88,7 @@ namespace Video2PSD
 
         public void Play() 
         {
-            if (GetState() != FilterState.Running)
+            if (GetState() != FilterState.Running && MyGraphController != null)
             {
                 int hr = MyGraphController.Run();
                 DsError.ThrowExceptionForHR(hr);
@@ -80,7 +96,7 @@ namespace Video2PSD
         }
         public void Pause() 
         {
-            if (GetState() != FilterState.Paused)
+            if (GetState() != FilterState.Paused && MyGraphController != null)
             {
                 int hr = MyGraphController.Pause();
                 DsError.ThrowExceptionForHR(hr);
@@ -107,24 +123,102 @@ namespace Video2PSD
             return state;
         } 
 
-        public void Step() { }
-        public void StepBack() { }
+        public void Step() 
+        {
+            if (MyFilterGraph == null) return;
+            if (GetState() != FilterState.Paused) Pause();
 
-        public void SeekAbsolute() { }
+            //Int64 prevTime, currTime;
+
+            //prevTime = GetCurrentPos();
+            IVideoFrameStep vfs = MyFilterGraph as IVideoFrameStep;
+            DsError.ThrowExceptionForHR(vfs.Step(1, null));
+            //currTime = GetCurrentPos();
+            //Debug.WriteLine("Stepped once: {0} MT", currTime - prevTime);
+        }
+        public void StepBack() 
+        {
+            if (MyFilterGraph == null) return;
+            if (GetState() != FilterState.Paused) Pause();
+
+            int hr;
+            IMediaSeeking graphSeek = MyFilterGraph as IMediaSeeking;
+            IBasicVideo madVRVideo = madVR as IBasicVideo;
+            double timePerFrame;
+            hr = madVRVideo.get_AvgTimePerFrame(out timePerFrame);
+            DsError.ThrowExceptionForHR(hr);
+
+            //Seconds to TimeSteps
+            long frameTime = (long)Math.Round(timePerFrame * 1000.0);
+            //TimeSteps to MediaTime
+            frameTime *= 10000;
+
+            long currPos, stopPos;
+            hr = graphSeek.GetPositions(out currPos, out stopPos);
+            DsError.ThrowExceptionForHR(hr);
+            hr = graphSeek.SetPositions(currPos - frameTime, AMSeekingSeekingFlags.AbsolutePositioning, null, AMSeekingSeekingFlags.NoPositioning);
+            DsError.ThrowExceptionForHR(hr);
+        }
+
+        public Int64 GetEndPosition()
+        {
+            int hr;
+            long pos;
+            IMediaSeeking graphSeek = MyFilterGraph as IMediaSeeking;
+            hr = graphSeek.GetStopPosition(out pos);
+            DsError.ThrowExceptionForHR(hr);
+            return pos; 
+        }
+        public Int64 GetCurrentPos()
+        {
+            int hr;
+            long pos;
+            IMediaSeeking graphSeek = MyFilterGraph as IMediaSeeking;
+            hr = graphSeek.GetCurrentPosition(out pos);
+            DsError.ThrowExceptionForHR(hr);
+            //hr = graphSeek.ConvertTimeFormat(out frame, TimeFormat.Frame, pos, TimeFormat.MediaTime);
+            //DsError.ThrowExceptionForHR(hr);
+            //Debug.WriteLine("Position from Graph: Media Time: {0}", pos);
+            return pos;
+        }
+        public void SeekAbsolute(Int64 pos) { }
         public bool ToggleSubtitle(Nullable<bool> enable = null) { return true; }
 
         public Image GetCapture() { return new Bitmap(0, 0); }
 
         private void VideoWindowSizeChanged(object sender, EventArgs e) 
         {
+            if (madVR == null) return;
             int hr;
             IBasicVideo madVRVideo = madVR as IBasicVideo;
             IVideoWindow madVRWindow = madVR as IVideoWindow;
-            hr = madVRVideo.put_DestinationWidth(RenderWindow.Width);
+
+            int sourceW, sourceH;
+            hr = madVRVideo.get_VideoWidth(out sourceW);
             DsError.ThrowExceptionForHR(hr);
-            hr = madVRVideo.put_DestinationHeight(RenderWindow.Height);
+            hr = madVRVideo.get_VideoHeight(out sourceH);
             DsError.ThrowExceptionForHR(hr);
-            hr = madVRWindow.SetWindowPosition(0, 0, RenderWindow.ClientSize.Width, RenderWindow.ClientSize.Height);
+
+            float nPercent = 0;
+            float nPercentW = 0;
+            float nPercentH = 0;
+
+            nPercentW = ((float)RenderWindow.ClientSize.Width / (float)sourceW);
+            nPercentH = ((float)RenderWindow.ClientSize.Height / (float)sourceH);
+
+            if (nPercentH < nPercentW)
+                nPercent = nPercentH;
+            else
+                nPercent = nPercentW;
+
+            int destWidth = (int)(sourceW * nPercent);
+            int destHeight = (int)(sourceH * nPercent);
+
+            hr = madVRVideo.put_DestinationWidth(destWidth);
+            DsError.ThrowExceptionForHR(hr);
+            hr = madVRVideo.put_DestinationHeight(destHeight);
+            DsError.ThrowExceptionForHR(hr);
+            hr = madVRWindow.SetWindowPosition((RenderWindow.ClientSize.Width - destWidth) / 2, (RenderWindow.ClientSize.Height - destHeight) / 2, destWidth, destHeight);
             DsError.ThrowExceptionForHR(hr);
         }
 
@@ -133,12 +227,6 @@ namespace Video2PSD
             int hr;
 
             MyFilterGraph = new FilterGraph() as IFilterGraph2;
-
-            ICaptureGraphBuilder2 icgb2 = new CaptureGraphBuilder2() as ICaptureGraphBuilder2;
-
-            hr = icgb2.SetFiltergraph(MyFilterGraph);
-            DsError.ThrowExceptionForHR(hr);
-
             ROTEntry = new DsROTEntry(MyFilterGraph);
 
             //File source
@@ -160,6 +248,8 @@ namespace Video2PSD
             DsError.ThrowExceptionForHR(hr);
             hr = MyFilterGraph.Connect(fileOut, LAVSplitIn);
             DsError.ThrowExceptionForHR(hr);
+            Marshal.ReleaseComObject(fileOut);
+            Marshal.ReleaseComObject(LAVSplitIn);
 
             //LAV Video Decoder
             LAVVideoDecoder = new LAVVideoDecoder() as IBaseFilter;
@@ -225,6 +315,14 @@ namespace Video2PSD
             DsError.ThrowExceptionForHR(hr);
             hr = MyFilterGraph.Connect(subsOut, subsIn);
             DsError.ThrowExceptionForHR(hr);
+            Marshal.ReleaseComObject(compressedVideoOut);
+            Marshal.ReleaseComObject(compressedVideoIn);
+            Marshal.ReleaseComObject(decompressedVideoOut);
+            Marshal.ReleaseComObject(decompressedVideoIn);
+            Marshal.ReleaseComObject(compressedAudioOut);
+            Marshal.ReleaseComObject(compressedAudioIn);
+            Marshal.ReleaseComObject(subsOut);
+            Marshal.ReleaseComObject(subsIn);
 
             //madVR
             madVR = new madVR() as IBaseFilter;
@@ -240,6 +338,8 @@ namespace Video2PSD
             DsError.ThrowExceptionForHR(hr);
             hr = MyFilterGraph.Connect(subbedVideoOut, subbedVideoIn);
             DsError.ThrowExceptionForHR(hr);
+            Marshal.ReleaseComObject(subbedVideoOut);
+            Marshal.ReleaseComObject(subbedVideoIn);
 
             //madVR must be configured after connecting the pins
             hr = madVRWindow.put_Owner(RenderWindow.Handle);
@@ -248,19 +348,29 @@ namespace Video2PSD
             DsError.ThrowExceptionForHR(hr);
             hr = madVRWindow.put_Visible(OABool.True);
             DsError.ThrowExceptionForHR(hr);
-            hr = madVRWindow.SetWindowPosition(0, 0, RenderWindow.ClientSize.Width, RenderWindow.ClientSize.Height);
-            DsError.ThrowExceptionForHR(hr);
-
-            IBasicVideo madVRVideo = madVR as IBasicVideo;
-            hr = madVRVideo.put_DestinationWidth(RenderWindow.Width);
-            DsError.ThrowExceptionForHR(hr);
-            hr = madVRVideo.put_DestinationHeight(RenderWindow.Height);
-            DsError.ThrowExceptionForHR(hr);
+            VideoWindowSizeChanged(this, new EventArgs());
 
             Events = MyFilterGraph as IMediaEvent;
             MyGraphController = MyFilterGraph as IMediaControl;
         }
-        private void TeardownGraph() { }
+        private void TeardownGraph() 
+        {
+            if (MyFilterGraph == null || MyGraphController == null) return;
+            if (GetState() != FilterState.Stopped) Stop();
+
+            if (Events != null) Marshal.ReleaseComObject(Events);
+            if (madVR != null) Marshal.ReleaseComObject(madVR);
+            if (DirectVobSub != null) Marshal.ReleaseComObject(DirectVobSub);
+            if (LAVAudioDecoder != null) Marshal.ReleaseComObject(LAVAudioDecoder);
+            if (LAVVideoDecoder != null) Marshal.ReleaseComObject(LAVVideoDecoder);
+            if (LAVSplitter != null) Marshal.ReleaseComObject(LAVSplitter);
+            if (File != null) Marshal.ReleaseComObject(File);
+
+            if (ROTEntry != null) ROTEntry.Dispose();
+
+            if (MyFilterGraph != null) Marshal.ReleaseComObject(MyFilterGraph);
+            MyGraphController = null;
+        }
 
         private void EventWait() 
         {
@@ -283,7 +393,7 @@ namespace Video2PSD
                             hr >= 0;
                             hr = Events.GetEvent(out ec, out p1, out p2, 0))
                         {
-                            Debug.Write(ec.ToString());
+                            Debug.WriteLine(ec.ToString());
 
                             if (ec == EventCode.Complete)
                             {

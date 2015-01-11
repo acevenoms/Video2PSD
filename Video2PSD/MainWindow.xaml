@@ -2,13 +2,16 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:wf="clr-namespace:System.Windows.Forms;assembly=System.Windows.Forms"
-        Title="Video2PSD" Height="509.76" Width="735.21">
+        Title="Video2PSD" Height="509.76" Width="735.21" Closing="MainWindow1_Closing">
+    <Window.Resources>
+        <BitmapImage x:Key="SpriteSheet" UriSource="icons.png"/>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
-            <RowDefinition Height="30" />
+            <RowDefinition Height="25" />
         </Grid.RowDefinitions>
         <Menu Grid.Row="0" VerticalAlignment="Top">
             <MenuItem Header="_File">
@@ -21,27 +24,91 @@
                 <Separator />
                 <MenuItem Header="_Quit" />
             </MenuItem>
+            <MenuItem Header="Edit">
+                <MenuItem Header="Clear Marker A" />
+                <MenuItem Header="Clear Marker B" />
+                <MenuItem Header="Clear Both Markers" />
+            </MenuItem>
+            <MenuItem Header="Options">
+                <MenuItem Header="Render Subtitles" IsCheckable="True" IsChecked="True"/>
+                <MenuItem Header="Subtitle Track" />
+                <Separator />
+                <MenuItem Header="Preferences..." />
+            </MenuItem>
+            <MenuItem Header="About"/>
         </Menu>
-        <Slider Margin="5,5,5,5" Grid.Row="2"/>
+        <Canvas x:Name="SeekBarBack" Margin="10,5" Grid.Row="2">
+        </Canvas>
+        <Slider x:Name="SeekBar" Margin="5,5,5,5" Grid.Row="2" LargeChange="0.1" Maximum="1" SmallChange="0.01" 
+                TickPlacement="TopLeft" MouseDown="SeekBar_MouseDown" SnapsToDevicePixels="True" Ticks="0.0,1.0"/>
         <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="30" />
-                <ColumnDefinition Width="30" />
-                <ColumnDefinition Width="30" />
-                <ColumnDefinition Width="30" />
-                <ColumnDefinition Width="30" />
-                <ColumnDefinition Width="30" />
-                <ColumnDefinition Width="30" />
+                <ColumnDefinition Width="27" />
+                <ColumnDefinition Width="27" />
+                <ColumnDefinition Width="27" />
+                <ColumnDefinition Width="27" />
+                <ColumnDefinition Width="27" />
+                <ColumnDefinition Width="27" />
+                <ColumnDefinition Width="27" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="30" />
             </Grid.ColumnDefinitions>
-            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Content="Beg" HorizontalAlignment="Left" Margin="2,2,2,2" Grid.Column="0" Width="26" Height="26"/>
-            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Content="Back" HorizontalAlignment="Left" Margin="2,2,2,2" Grid.Column="1" Width="26" Height="26"/>
-            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Content="Pl" HorizontalAlignment="Left" Margin="2,2,2,2" Grid.Column="2" Width="26" Height="26"/>
-            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Content="Fwd" HorizontalAlignment="Left" Margin="2,2,2,2" Grid.Column="3" Width="26" Height="26"/>
-            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Content="End" HorizontalAlignment="Left" Margin="2,2,2,2" Grid.Column="4" Width="26" Height="26"/>
-            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Content="A" HorizontalAlignment="Left" Margin="2,2,2,2" Grid.Column="5" Width="26" Height="26"/>
-            <Button Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" Content="B" HorizontalAlignment="Left" Margin="2,2,2,2" Grid.Column="6" Width="26" Height="26"/>
+            <Button x:Name="BeginButton" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" HorizontalAlignment="Stretch" Margin="2,2,2,2" Grid.Column="0" VerticalAlignment="Stretch" Click="BeginButton_Click">
+                <Image Width="11" Height="7">
+                    <Image.Source>
+                        <CroppedBitmap Source="{StaticResource SpriteSheet}"
+                                       SourceRect="20,2,11,7" />
+                    </Image.Source>
+                </Image>
+            </Button>
+            <Button x:Name="StepBackButton" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" HorizontalAlignment="Stretch" Margin="2,2,2,2" Grid.Column="1" VerticalAlignment="Stretch" Click="StepBackButton_Click">
+                <Image Width="9" Height="7">
+                    <Image.Source>
+                        <CroppedBitmap Source="{StaticResource SpriteSheet}"
+                                       SourceRect="42,2,9,7" />
+                    </Image.Source>
+                </Image>
+            </Button>
+            <Button x:Name="PlayPauseButton" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" HorizontalAlignment="Stretch" Margin="2,2,2,2" Grid.Column="2" VerticalAlignment="Stretch" Click="PlayPauseButton_Click">
+                <Image Width="11" Height="11">
+                    <Image.Source>
+                        <CroppedBitmap Source="{StaticResource SpriteSheet}"
+                                       SourceRect="0,0,11,11" />
+                    </Image.Source>
+                </Image>
+            </Button>
+            <Button x:Name="StepForwardButton" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" HorizontalAlignment="Stretch" Margin="2,2,2,2" Grid.Column="3" VerticalAlignment="Stretch" Click="StepForwardButton_Click">
+                <Image Width="9" Height="7">
+                    <Image.Source>
+                        <CroppedBitmap Source="{StaticResource SpriteSheet}"
+                                       SourceRect="51,2,9,7" />
+                    </Image.Source>
+                </Image>
+            </Button>
+            <Button x:Name="EndButton" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" HorizontalAlignment="Stretch" Margin="2,2,2,2" Grid.Column="4" VerticalAlignment="Stretch" Click="EndButton_Click">
+                <Image Width="11" Height="7">
+                    <Image.Source>
+                        <CroppedBitmap Source="{StaticResource SpriteSheet}"
+                                       SourceRect="31,2,11,7" />
+                    </Image.Source>
+                </Image>
+            </Button>
+            <Button x:Name="MarkInButton" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" HorizontalAlignment="Stretch" Margin="2,2,2,2" Grid.Column="5" VerticalAlignment="Stretch" Click="MarkInButton_Click">
+                <Image Width="5" Height="9">
+                    <Image.Source>
+                        <CroppedBitmap Source="{StaticResource SpriteSheet}"
+                                       SourceRect="60,1,5,9" />
+                    </Image.Source>
+                </Image>
+            </Button>
+            <Button x:Name="MarkOutButton" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" HorizontalAlignment="Stretch" Margin="2,2,2,2" Grid.Column="6" VerticalAlignment="Stretch" Click="MarkOutButton_Click">
+                <Image Width="5" Height="9">
+                    <Image.Source>
+                        <CroppedBitmap Source="{StaticResource SpriteSheet}"
+                                       SourceRect="65,1,5,9" />
+                    </Image.Source>
+                </Image>
+            </Button>
         </Grid>
         <WindowsFormsHost Grid.Row="1">
             <wf:Panel x:Name="VideoPanel" Dock="Fill" BackColor="Black" />
