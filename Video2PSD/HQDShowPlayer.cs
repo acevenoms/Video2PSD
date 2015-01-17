@@ -205,6 +205,32 @@ namespace Video2PSD
             DsError.ThrowExceptionForHR(hr);
         }
 
+        public List<string> GetSubtitleTracks()
+        {
+            int hr;
+            IAMStreamSelect demuxStreamSelect = LAVSplitter as IAMStreamSelect;
+            List<string> streams = new List<string>();
+
+            int nStreams;
+            hr = demuxStreamSelect.Count(out nStreams);
+            DsError.ThrowExceptionForHR(hr);
+
+            for (int i = 0; i < nStreams; ++i)
+            {
+                AMMediaType type = new AMMediaType();
+                AMStreamSelectInfoFlags enabled;
+                string name;
+                int localeId, groupId;
+                object obj = null, unk = null;
+                hr = demuxStreamSelect.Info(i, out type, out enabled, out localeId, out groupId, out name, out obj, out unk);
+                DsError.ThrowExceptionForHR(hr);
+
+                streams.Add(name);
+            }
+
+            return streams;
+        }
+
         public bool ToggleSubtitle(Nullable<bool> enable = null) { return true; }
 
         public Image GetCapture() { return new Bitmap(0, 0); }

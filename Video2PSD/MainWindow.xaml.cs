@@ -59,6 +59,14 @@ namespace Video2PSD
                 player.OpenFile(ofd.FileName);
                 SeekBarTimer.Start();
                 DoPlay();
+
+                List<string> streams = player.GetSubtitleTracks();
+                foreach (string s in streams)
+                {
+                    MenuItem item = new MenuItem();
+                    item.Header = s;
+                    SubTracksMenu.Items.Add(item);
+                }
             }
         }
 

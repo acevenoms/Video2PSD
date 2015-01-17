@@ -31,7 +31,7 @@
             </MenuItem>
             <MenuItem Header="Options">
                 <MenuItem Header="Render Subtitles" IsCheckable="True" IsChecked="True"/>
-                <MenuItem Header="Subtitle Track" />
+                <MenuItem x:Name="SubTracksMenu" Header="Subtitle Track" />
                 <Separator />
                 <MenuItem Header="Preferences..." />
             </MenuItem>
