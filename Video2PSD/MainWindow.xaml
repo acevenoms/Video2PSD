@@ -42,7 +42,7 @@
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <Slider x:Name="SeekBar" Margin="5,5,5,5" Grid.Column="0" LargeChange="0.0001" Maximum="1" SmallChange="1E-05" 
+            <Slider x:Name="SeekBar" Margin="5,5,5,5" Grid.Column="0" LargeChange="0" Maximum="1" SmallChange="0" 
                 TickPlacement="TopLeft" SnapsToDevicePixels="True" Ticks="0.0,1.0" Thumb.DragStarted="SeekBar_DragStarted" 
                 Thumb.DragCompleted="SeekBar_DragCompleted" Thumb.DragDelta="SeekBar_DragDelta" RepeatButton.Click="SeekBar_Click"/>
             <Label x:Name="TimeCodeDisplay" Grid.Column="1" Content="00:00.000/00:00.000" FontFamily="Consolas" VerticalAlignment="Center"/>
