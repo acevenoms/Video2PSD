@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -51,15 +52,11 @@ namespace Video2PSD
             OpenFileDialog ofd = new OpenFileDialog();
             if (ofd.ShowDialog() == true)
             {
+                Title = "Video2PSD - " + ofd.SafeFileName;
+
                 player.OpenFile(ofd.FileName);
                 SeekBarTimer.Start();
-                player.Play();
-
-                //Image change
-                Image buttonSprite = (PlayPauseButton.Content as Image);
-                buttonSprite.Width = 9;
-                buttonSprite.Height = 9;
-                buttonSprite.Source = new CroppedBitmap((BitmapSource)this.Resources["SpriteSheet"], new Int32Rect(11, 1, 9, 9));
+                DoPlay();
             }
         }
 
@@ -73,24 +70,34 @@ namespace Video2PSD
         {
             if (player.GetState() == DirectShowLib.FilterState.Running) //Playing, do pause
             {
-                player.Pause();
-
-                //Image change
-                Image buttonSprite = (PlayPauseButton.Content as Image);
-                buttonSprite.Width = 11;
-                buttonSprite.Height = 11;
-                buttonSprite.Source = new CroppedBitmap((BitmapSource)this.Resources["SpriteSheet"], new Int32Rect(0, 0, 11, 11));
+                DoPause();
             }
             else //Paused or stopped, do play
             {
-                player.Play();
-
-                //Image change
-                Image buttonSprite = (PlayPauseButton.Content as Image);
-                buttonSprite.Width = 9;
-                buttonSprite.Height = 9;
-                buttonSprite.Source = new CroppedBitmap((BitmapSource)this.Resources["SpriteSheet"], new Int32Rect(11, 1, 9, 9));
+                DoPlay();
             }
+        }
+
+        private void DoPause()
+        {
+            player.Pause();
+
+            //Image change
+            Image buttonSprite = (PlayPauseButton.Content as Image);
+            buttonSprite.Width = 11;
+            buttonSprite.Height = 11;
+            buttonSprite.Source = new CroppedBitmap((BitmapSource)this.Resources["SpriteSheet"], new Int32Rect(0, 0, 11, 11));
+        }
+
+        private void DoPlay()
+        {
+            player.Play();
+
+            //Image change
+            Image buttonSprite = (PlayPauseButton.Content as Image);
+            buttonSprite.Width = 9;
+            buttonSprite.Height = 9;
+            buttonSprite.Source = new CroppedBitmap((BitmapSource)this.Resources["SpriteSheet"], new Int32Rect(11, 1, 9, 9));
         }
 
         private void BeginButton_Click(object sender, RoutedEventArgs e)
@@ -100,11 +107,13 @@ namespace Video2PSD
 
         private void StepBackButton_Click(object sender, RoutedEventArgs e)
         {
+            DoPause();
             player.StepBack();
         }
 
         private void StepForwardButton_Click(object sender, RoutedEventArgs e)
         {
+            DoPause();
             player.Step();
         }
 
@@ -116,13 +125,15 @@ namespace Video2PSD
         private void MarkInButton_Click(object sender, RoutedEventArgs e)
         {
             MarkIn = player.GetCurrentPos();
-            SeekBar.Ticks[0] = (double)MarkIn / (double)player.GetEndPosition();
+            SeekBar.IsSelectionRangeEnabled = true;
+            SeekBar.SelectionStart = (double)MarkIn / (double)player.GetEndPosition();
         }
 
         private void MarkOutButton_Click(object sender, RoutedEventArgs e)
         {
             MarkOut = player.GetCurrentPos();
-            SeekBar.Ticks[1] = (double)MarkOut / (double)player.GetEndPosition();
+            SeekBar.IsSelectionRangeEnabled = true;
+            SeekBar.SelectionEnd = (double)MarkOut / (double)player.GetEndPosition();
         }
 
         private void SeekBarTimer_Tick(object sender, EventArgs e)
@@ -135,12 +146,30 @@ namespace Video2PSD
             SeekBar.Value = scalarDone;
         }
 
-        private void SeekBar_MouseDown(object sender, MouseButtonEventArgs e)
+        private void SeekBar_DragStarted(object sender, DragStartedEventArgs e)
         {
-            Point downAt = e.GetPosition(SeekBar as IInputElement);
-            Debug.WriteLine("Mouse Down at: {0}", downAt);
+            DoPause();
+            SeekBarTimer.Stop();
+        }
 
-            e.Handled = true;
+        private void SeekBar_DragCompleted(object sender, DragCompletedEventArgs e)
+        {
+            long newPos = (long)(SeekBar.Value * player.GetEndPosition());
+            player.SeekAbsolute(newPos);
+            DoPlay();
+            SeekBarTimer.Start();
+        }
+
+        private void SeekBar_DragDelta(object sender, DragDeltaEventArgs e)
+        {
+            long newPos = (long)(SeekBar.Value * player.GetEndPosition());
+            player.SeekAbsolute(newPos);
+        }
+
+        private void VolumeSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
+        {
+            if (player == null) return;
+            player.SetVolume((int)e.NewValue);
         }
     }
 }

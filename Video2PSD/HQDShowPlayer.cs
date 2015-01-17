@@ -37,6 +37,7 @@ namespace Video2PSD
         private IBaseFilter LAVAudioDecoder = null;
         private IBaseFilter DirectVobSub = null;
         private IBaseFilter madVR = null;
+        private IBaseFilter DefaultDirectSound = null;
 
         public HQDShowPlayer(Control renderWnd)
         {
@@ -169,6 +170,7 @@ namespace Video2PSD
             DsError.ThrowExceptionForHR(hr);
             return pos; 
         }
+
         public Int64 GetCurrentPos()
         {
             int hr;
@@ -181,7 +183,28 @@ namespace Video2PSD
             //Debug.WriteLine("Position from Graph: Media Time: {0}", pos);
             return pos;
         }
-        public void SeekAbsolute(Int64 pos) { }
+
+        public void SeekAbsolute(Int64 pos) 
+        {
+            int hr;
+            IMediaSeeking graphSeek = MyFilterGraph as IMediaSeeking;
+            hr = graphSeek.SetPositions(pos, AMSeekingSeekingFlags.AbsolutePositioning, null, AMSeekingSeekingFlags.NoPositioning);
+            DsError.ThrowExceptionForHR(hr);
+        }
+
+        public void SetVolume(int Volume)
+        {
+            int hr;
+            IBasicAudio DSoundAudio = DefaultDirectSound as IBasicAudio;
+            int cdB; //centidecibels
+            if (Volume == 0) //The function is asymptotic at x=0
+                cdB = -10000;
+            else
+                cdB = (int)((20 * Math.Log10(Volume / 100.0)) * 100);
+            hr = DSoundAudio.put_Volume(cdB);
+            DsError.ThrowExceptionForHR(hr);
+        }
+
         public bool ToggleSubtitle(Nullable<bool> enable = null) { return true; }
 
         public Image GetCapture() { return new Bitmap(0, 0); }
@@ -349,6 +372,24 @@ namespace Video2PSD
             hr = madVRWindow.put_Visible(OABool.True);
             DsError.ThrowExceptionForHR(hr);
             VideoWindowSizeChanged(this, new EventArgs());
+
+            //Sound render
+            DefaultDirectSound = new DSoundRender() as IBaseFilter;
+            MyFilterGraph.AddFilter(DefaultDirectSound, "Default Direct Sound Device");
+
+            IPin decompressedAudioOut;
+            hr = LAVAudioDecoder.FindPin("Out", out decompressedAudioOut);
+            DsError.ThrowExceptionForHR(hr);
+            IPin decompressedAudioIn;
+            hr = DefaultDirectSound.FindPin("Audio Input pin (rendered)", out decompressedAudioIn);
+            DsError.ThrowExceptionForHR(hr);
+            hr = MyFilterGraph.Connect(decompressedAudioOut, decompressedAudioIn);
+            DsError.ThrowExceptionForHR(hr);
+            Marshal.ReleaseComObject(decompressedAudioOut);
+            Marshal.ReleaseComObject(decompressedAudioIn);
+
+            IBasicAudio DSoundAudio = DefaultDirectSound as IBasicAudio;
+            SetVolume(50);
 
             Events = MyFilterGraph as IMediaEvent;
             MyGraphController = MyFilterGraph as IMediaControl;

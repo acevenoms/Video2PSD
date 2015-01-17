@@ -37,10 +37,9 @@
             </MenuItem>
             <MenuItem Header="About"/>
         </Menu>
-        <Canvas x:Name="SeekBarBack" Margin="10,5" Grid.Row="2">
-        </Canvas>
-        <Slider x:Name="SeekBar" Margin="5,5,5,5" Grid.Row="2" LargeChange="0.1" Maximum="1" SmallChange="0.01" 
-                TickPlacement="TopLeft" MouseDown="SeekBar_MouseDown" SnapsToDevicePixels="True" Ticks="0.0,1.0"/>
+        <Slider x:Name="SeekBar" Margin="5,5,5,5" Grid.Row="2" LargeChange="0.0001" Maximum="1" SmallChange="1E-05" 
+                TickPlacement="TopLeft" SnapsToDevicePixels="True" Ticks="0.0,1.0" Thumb.DragStarted="SeekBar_DragStarted" 
+                Thumb.DragCompleted="SeekBar_DragCompleted" Thumb.DragDelta="SeekBar_DragDelta"/>
         <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="27" />
@@ -51,7 +50,7 @@
                 <ColumnDefinition Width="27" />
                 <ColumnDefinition Width="27" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="30" />
+                <ColumnDefinition Width="110" />
             </Grid.ColumnDefinitions>
             <Button x:Name="BeginButton" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" HorizontalAlignment="Stretch" Margin="2,2,2,2" Grid.Column="0" VerticalAlignment="Stretch" Click="BeginButton_Click">
                 <Image Width="11" Height="7">
@@ -109,6 +108,7 @@
                     </Image.Source>
                 </Image>
             </Button>
+            <Slider x:Name="VolumeSlider" Grid.Column="8" Margin="5,0,5,0" ValueChanged="VolumeSlider_ValueChanged" Maximum="100" LargeChange="10" SmallChange="1" Value="50"/>
         </Grid>
         <WindowsFormsHost Grid.Row="1">
             <wf:Panel x:Name="VideoPanel" Dock="Fill" BackColor="Black" />
