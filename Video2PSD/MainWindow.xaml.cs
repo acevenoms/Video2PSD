@@ -31,6 +31,8 @@ namespace Video2PSD
 
         private DispatcherTimer SeekBarTimer = new DispatcherTimer();
 
+        private bool Muted = false;
+
         public MainWindow()
         {
             try
@@ -144,6 +146,12 @@ namespace Video2PSD
             double scalarDone = (double)currPos / (double)endPos;
 
             SeekBar.Value = scalarDone;
+            TimeSpan current, end;
+            current = new TimeSpan(currPos);
+            end = new TimeSpan(endPos);
+            TimeCodeDisplay.Content = string.Format("{0:00}:{1:00}.{2:000}/{3:00}:{4:00}.{5:000}",
+                (int)current.TotalMinutes, current.Seconds, current.Milliseconds,
+                (int)end.TotalMinutes, end.Seconds, end.Milliseconds);
         }
 
         private void SeekBar_DragStarted(object sender, DragStartedEventArgs e)
@@ -170,6 +178,47 @@ namespace Video2PSD
         {
             if (player == null) return;
             player.SetVolume((int)e.NewValue);
+        }
+
+        private void MuteButton_Click(object sender, RoutedEventArgs e)
+        {
+            if (Muted)
+            {
+                player.SetVolume((int)VolumeSlider.Value);
+
+                Image buttonSprite = (MuteButton.Content as Image);
+
+                buttonSprite.Source = new CroppedBitmap((BitmapSource)this.Resources["SpriteSheet"], new Int32Rect(70, 0, 15, 15));
+
+                Muted = false;
+            }
+            else
+            {
+                player.SetVolume(0);
+
+                Image buttonSprite = (MuteButton.Content as Image);
+                buttonSprite.Source = new CroppedBitmap((BitmapSource)this.Resources["SpriteSheet"], new Int32Rect(85, 0, 15, 15));
+
+                Muted = true;
+            }
+        }
+
+        private void SeekBar_Click(object sender, RoutedEventArgs e)
+        {
+            Point rawClickPoint = Mouse.GetPosition(SeekBar);
+            double scalarDesiredLocation;
+            if (rawClickPoint.X <= SeekBar.Margin.Left)
+                scalarDesiredLocation = 0.0;
+            else if (rawClickPoint.X >= (SeekBar.ActualWidth - SeekBar.Margin.Right))
+                scalarDesiredLocation = 1.0;
+            else
+            {
+                double adjustedClickX = rawClickPoint.X - SeekBar.Margin.Left;
+                scalarDesiredLocation = adjustedClickX / (SeekBar.ActualWidth - (SeekBar.Margin.Left + SeekBar.Margin.Right));
+            }
+
+            long newPos = (long)(scalarDesiredLocation * player.GetEndPosition());
+            player.SeekAbsolute(newPos);
         }
     }
 }

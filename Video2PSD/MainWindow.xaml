@@ -37,9 +37,16 @@
             </MenuItem>
             <MenuItem Header="About"/>
         </Menu>
-        <Slider x:Name="SeekBar" Margin="5,5,5,5" Grid.Row="2" LargeChange="0.0001" Maximum="1" SmallChange="1E-05" 
+        <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <Slider x:Name="SeekBar" Margin="5,5,5,5" Grid.Column="0" LargeChange="0.0001" Maximum="1" SmallChange="1E-05" 
                 TickPlacement="TopLeft" SnapsToDevicePixels="True" Ticks="0.0,1.0" Thumb.DragStarted="SeekBar_DragStarted" 
-                Thumb.DragCompleted="SeekBar_DragCompleted" Thumb.DragDelta="SeekBar_DragDelta"/>
+                Thumb.DragCompleted="SeekBar_DragCompleted" Thumb.DragDelta="SeekBar_DragDelta" RepeatButton.Click="SeekBar_Click"/>
+            <Label x:Name="TimeCodeDisplay" Grid.Column="1" Content="00:00.000/00:00.000" FontFamily="Consolas" VerticalAlignment="Center"/>
+        </Grid>
         <Grid Grid.Row="3">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="27" />
@@ -50,6 +57,7 @@
                 <ColumnDefinition Width="27" />
                 <ColumnDefinition Width="27" />
                 <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="27" />
                 <ColumnDefinition Width="110" />
             </Grid.ColumnDefinitions>
             <Button x:Name="BeginButton" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" HorizontalAlignment="Stretch" Margin="2,2,2,2" Grid.Column="0" VerticalAlignment="Stretch" Click="BeginButton_Click">
@@ -108,7 +116,15 @@
                     </Image.Source>
                 </Image>
             </Button>
-            <Slider x:Name="VolumeSlider" Grid.Column="8" Margin="5,0,5,0" ValueChanged="VolumeSlider_ValueChanged" Maximum="100" LargeChange="10" SmallChange="1" Value="50"/>
+            <Button x:Name="MuteButton" Style="{StaticResource {x:Static ToolBar.ButtonStyleKey}}" HorizontalAlignment="Stretch" Margin="2,2,2,2" Grid.Column="8" VerticalAlignment="Stretch" Click="MuteButton_Click">
+                <Image Width="15" Height="15">
+                    <Image.Source>
+                        <CroppedBitmap Source="{StaticResource SpriteSheet}"
+                                       SourceRect="70,0,15,15" />
+                    </Image.Source>
+                </Image>
+            </Button>
+            <Slider x:Name="VolumeSlider" Grid.Column="9" Margin="5,0,5,0" ValueChanged="VolumeSlider_ValueChanged" Maximum="100" LargeChange="10" SmallChange="1" Value="50"/>
         </Grid>
         <WindowsFormsHost Grid.Row="1">
             <wf:Panel x:Name="VideoPanel" Dock="Fill" BackColor="Black" />
