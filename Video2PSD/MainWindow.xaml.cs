@@ -83,6 +83,10 @@ namespace Video2PSD
 
                         RepopulateStreamMenu();
                     };
+                    item.Unchecked += (object sender3, RoutedEventArgs e3) =>
+                    {
+                        item.IsChecked = true;
+                    };
                     SubTracksMenu.Items.Add(item);
                 }
                 SubTracksMenu.Items.Add(new Separator());
