@@ -18,6 +18,48 @@ namespace Video2PSD
     /// </summary>
     class HQDShowPlayer : IDisposable
     {
+        public class Stream
+        {
+            public int Index;
+            public AMMediaType Type;
+            public AMStreamSelectInfoFlags SelectFlags;
+            public string Name;
+            public int LocaleID, GroupID;
+        }
+
+        public class StreamGroup
+        {
+            public int GroupID;
+            public List<Stream> Streams = new List<Stream>();
+        }
+
+        public class StreamCollection
+        {
+            public List<StreamGroup> Groups = new List<StreamGroup>();
+            public Stream AddStream(int index, AMMediaType type, AMStreamSelectInfoFlags flags, string name, int localeID, int groupID)
+            {
+                Stream toAdd = new Stream()
+                {
+                    Index = index,
+                    Type = type,
+                    SelectFlags = flags,
+                    Name = name,
+                    LocaleID = localeID,
+                    GroupID = groupID
+                };
+
+                StreamGroup group = Groups.Where((x) => x.GroupID == groupID).ToList().FirstOrDefault();
+                if (group == null)
+                {
+                    group = new StreamGroup() { GroupID = groupID };
+                    Groups.Add(group);
+                }
+                group.Streams.Add(toAdd);
+
+                return toAdd;
+            }
+        }
+
         private Control RenderWindow;
         private string FileName;
 
@@ -205,11 +247,11 @@ namespace Video2PSD
             DsError.ThrowExceptionForHR(hr);
         }
 
-        public List<string> GetSubtitleTracks()
+        public StreamCollection GetSubtitleTracks()
         {
             int hr;
             IAMStreamSelect demuxStreamSelect = LAVSplitter as IAMStreamSelect;
-            List<string> streams = new List<string>();
+            StreamCollection streams = new StreamCollection();
 
             int nStreams;
             hr = demuxStreamSelect.Count(out nStreams);
@@ -225,10 +267,21 @@ namespace Video2PSD
                 hr = demuxStreamSelect.Info(i, out type, out enabled, out localeId, out groupId, out name, out obj, out unk);
                 DsError.ThrowExceptionForHR(hr);
 
-                streams.Add(name);
+                //if(groupId == 2 && name != "S: No subtitles")
+                    streams.AddStream(i, type, enabled, name, localeId, groupId);
             }
 
             return streams;
+        }
+
+        public void EnableStream(Stream stream)
+        {
+            int hr;
+
+            IAMStreamSelect demuxStreamSelect = LAVSplitter as IAMStreamSelect;
+
+            hr = demuxStreamSelect.Enable(stream.Index, AMStreamSelectEnableFlags.Enable);
+            DsError.ThrowExceptionForHR(hr);
         }
 
         public bool ToggleSubtitle(Nullable<bool> enable = null) { return true; }

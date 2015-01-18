@@ -60,14 +60,34 @@ namespace Video2PSD
                 SeekBarTimer.Start();
                 DoPlay();
 
-                List<string> streams = player.GetSubtitleTracks();
-                foreach (string s in streams)
+                RepopulateStreamMenu();
+            }
+        }
+
+        private void RepopulateStreamMenu()
+        {
+            SubTracksMenu.Items.Clear();
+
+            HQDShowPlayer.StreamCollection streams = player.GetSubtitleTracks();
+            foreach (HQDShowPlayer.StreamGroup sg in streams.Groups)
+            {
+                foreach (HQDShowPlayer.Stream s in sg.Streams)
                 {
                     MenuItem item = new MenuItem();
-                    item.Header = s;
+                    item.Header = s.Name;
+                    item.IsCheckable = true;
+                    item.IsChecked = (s.SelectFlags != DirectShowLib.AMStreamSelectInfoFlags.Disabled);
+                    item.Checked += (object sender2, RoutedEventArgs e2) =>
+                    {
+                        player.EnableStream(s);
+
+                        RepopulateStreamMenu();
+                    };
                     SubTracksMenu.Items.Add(item);
                 }
+                SubTracksMenu.Items.Add(new Separator());
             }
+            SubTracksMenu.Items.RemoveAt(SubTracksMenu.Items.Count - 1);
         }
 
         private void MainWindow1_Closing(object sender, System.ComponentModel.CancelEventArgs e)
