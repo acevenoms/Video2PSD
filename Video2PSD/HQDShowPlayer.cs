@@ -1,9 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -71,6 +73,8 @@ namespace Video2PSD
         private IMediaControl MyGraphController = null;
 
         private bool Closing = false;
+
+        private bool Stepping = false;
 
         //Filters of the graph
         private IBaseFilter File = null;
@@ -176,6 +180,9 @@ namespace Video2PSD
             //prevTime = GetCurrentPos();
             IVideoFrameStep vfs = MyFilterGraph as IVideoFrameStep;
             DsError.ThrowExceptionForHR(vfs.Step(1, null));
+            Stepping = true;
+            while (Stepping) Thread.Sleep(1); //HORRIBLE SYNCHRO
+
             //currTime = GetCurrentPos();
             //Debug.WriteLine("Stepped once: {0} MT", currTime - prevTime);
         }
@@ -284,9 +291,60 @@ namespace Video2PSD
             DsError.ThrowExceptionForHR(hr);
         }
 
-        public bool ToggleSubtitle(Nullable<bool> enable = null) { return true; }
+        public Image GetCapture() 
+        {
+            int hr;
+            IBasicVideo madVRVideo = madVR as IBasicVideo;
 
-        public Image GetCapture() { return new Bitmap(0, 0); }
+            int bufferSize = 0;
+            hr = madVRVideo.GetCurrentImage(ref bufferSize, IntPtr.Zero);
+            DsError.ThrowExceptionForHR(hr);
+
+            Bitmap image = null;
+            IntPtr imgBufferUnmanaged = Marshal.AllocHGlobal(bufferSize);
+            hr = madVRVideo.GetCurrentImage(bufferSize, imgBufferUnmanaged);
+            DsError.ThrowExceptionForHR(hr);
+
+            BitmapInfoHeader header = new BitmapInfoHeader();
+
+            //First, copy up just the BitmapInfoHeader
+            int bmihSize = (int)Marshal.ReadIntPtr(imgBufferUnmanaged);
+            byte[] bmih = new byte[bmihSize];
+            Marshal.Copy(imgBufferUnmanaged, bmih, 0, bmihSize);
+
+            //Next, read the header data
+            MemoryStream imageStream = new MemoryStream(bmih);
+            BinaryReader imageReader = new BinaryReader(imageStream);
+            header.Size = imageReader.ReadInt32();
+            header.Width = imageReader.ReadInt32();
+            header.Height = imageReader.ReadInt32();
+            header.Planes = imageReader.ReadInt16();
+            header.BitCount = imageReader.ReadInt16();
+            header.Compression = imageReader.ReadInt32();
+            header.ImageSize = imageReader.ReadInt32();
+            header.XPelsPerMeter = imageReader.ReadInt32();
+            header.YPelsPerMeter = imageReader.ReadInt32();
+            header.ClrUsed = imageReader.ReadInt32();
+            header.ClrImportant = imageReader.ReadInt32();
+
+            //Create the bitmap
+            image = new Bitmap(header.Width, header.Height, PixelFormat.Format32bppRgb);
+
+            //Finally, the bitmap data
+            BitmapData imageData = image.LockBits(new Rectangle(0, 0, header.Width, header.Height), ImageLockMode.WriteOnly, PixelFormat.Format32bppRgb);
+            CopyMemory(imageData.Scan0, imgBufferUnmanaged + bmihSize, (uint)header.ImageSize);
+            image.UnlockBits(imageData);
+
+            Marshal.FreeHGlobal(imgBufferUnmanaged);
+
+            //It comes out upside down otherwise
+            image.RotateFlip(RotateFlipType.RotateNoneFlipY);
+
+            return image;
+        }
+
+        [DllImport("kernel32.dll", EntryPoint = "CopyMemory", SetLastError = false)]
+        private static extern void CopyMemory(IntPtr dest, IntPtr src, uint count);
 
         private void VideoWindowSizeChanged(object sender, EventArgs e) 
         {
@@ -359,9 +417,9 @@ namespace Video2PSD
             DsError.ThrowExceptionForHR(hr);
 
             //LAV Audio Decoder
-            LAVAudioDecoder = new LAVAudioDecoder() as IBaseFilter;
-            hr = MyFilterGraph.AddFilter(LAVAudioDecoder, "LAV Audio Decoder");
-            DsError.ThrowExceptionForHR(hr);
+            //LAVAudioDecoder = new LAVAudioDecoder() as IBaseFilter;
+            //hr = MyFilterGraph.AddFilter(LAVAudioDecoder, "LAV Audio Decoder");
+            //DsError.ThrowExceptionForHR(hr);
 
             //DirectVobSub
             DirectVobSub = new DirectVobSub() as IBaseFilter;
@@ -371,9 +429,9 @@ namespace Video2PSD
             IPin compressedVideoOut;
             hr = LAVSplitter.FindPin("Video", out compressedVideoOut);
             DsError.ThrowExceptionForHR(hr);
-            IPin compressedAudioOut;
-            hr = LAVSplitter.FindPin("Audio", out compressedAudioOut);
-            DsError.ThrowExceptionForHR(hr);
+            //IPin compressedAudioOut;
+            //hr = LAVSplitter.FindPin("Audio", out compressedAudioOut);
+            //DsError.ThrowExceptionForHR(hr);
             IPin subsOut;
             hr = LAVSplitter.FindPin("Subtitle", out subsOut);
             DsError.ThrowExceptionForHR(hr);
@@ -383,9 +441,9 @@ namespace Video2PSD
             IPin compressedVideoIn;
             hr = LAVVideoDecoder.FindPin("In", out compressedVideoIn);
             DsError.ThrowExceptionForHR(hr);
-            IPin compressedAudioIn;
-            hr = LAVAudioDecoder.FindPin("In", out compressedAudioIn);
-            DsError.ThrowExceptionForHR(hr);
+            //IPin compressedAudioIn;
+            //hr = LAVAudioDecoder.FindPin("In", out compressedAudioIn);
+            //DsError.ThrowExceptionForHR(hr);
 
             IPin subsIn = null;
             // For some reason, normal method of finding pins doesn't work on DirectVobSub, so we manually loop and query for it.
@@ -413,16 +471,16 @@ namespace Video2PSD
             DsError.ThrowExceptionForHR(hr);
             hr = MyFilterGraph.Connect(decompressedVideoOut, decompressedVideoIn);
             DsError.ThrowExceptionForHR(hr);
-            hr = MyFilterGraph.Connect(compressedAudioOut, compressedAudioIn);
-            DsError.ThrowExceptionForHR(hr);
+            //hr = MyFilterGraph.Connect(compressedAudioOut, compressedAudioIn);
+            //DsError.ThrowExceptionForHR(hr);
             hr = MyFilterGraph.Connect(subsOut, subsIn);
             DsError.ThrowExceptionForHR(hr);
             Marshal.ReleaseComObject(compressedVideoOut);
             Marshal.ReleaseComObject(compressedVideoIn);
             Marshal.ReleaseComObject(decompressedVideoOut);
             Marshal.ReleaseComObject(decompressedVideoIn);
-            Marshal.ReleaseComObject(compressedAudioOut);
-            Marshal.ReleaseComObject(compressedAudioIn);
+            //Marshal.ReleaseComObject(compressedAudioOut);
+            //Marshal.ReleaseComObject(compressedAudioIn);
             Marshal.ReleaseComObject(subsOut);
             Marshal.ReleaseComObject(subsIn);
 
@@ -453,6 +511,7 @@ namespace Video2PSD
             VideoWindowSizeChanged(this, new EventArgs());
 
             //Sound render
+            /*
             DefaultDirectSound = new DSoundRender() as IBaseFilter;
             MyFilterGraph.AddFilter(DefaultDirectSound, "Default Direct Sound Device");
 
@@ -466,9 +525,10 @@ namespace Video2PSD
             DsError.ThrowExceptionForHR(hr);
             Marshal.ReleaseComObject(decompressedAudioOut);
             Marshal.ReleaseComObject(decompressedAudioIn);
-
+            
             IBasicAudio DSoundAudio = DefaultDirectSound as IBasicAudio;
             SetVolume(50);
+            */
 
             Events = MyFilterGraph as IMediaEvent;
             MyGraphController = MyFilterGraph as IMediaControl;
@@ -513,11 +573,15 @@ namespace Video2PSD
                             hr >= 0;
                             hr = Events.GetEvent(out ec, out p1, out p2, 0))
                         {
-                            Debug.WriteLine(ec.ToString());
+                            //Debug.WriteLine(ec.ToString());
 
                             if (ec == EventCode.Complete)
                             {
                                 Stop();
+                            }
+                            else if (Stepping && ec == EventCode.StepComplete)
+                            {
+                                Stepping = false;
                             }
 
                             // Release any resources the message allocated

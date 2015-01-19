@@ -18,9 +18,11 @@
                 <MenuItem x:Name="OpenVideoMenuItem" Header="_Open Video..." Click="OpenVideoMenuItem_Click" />
                 <MenuItem Header="_Add Subtitles..." />
                 <Separator />
+                <MenuItem Header="Save Snapshot..." Click="SaveSnapshot_Click" />
                 <MenuItem Header="_Save Project" />
                 <MenuItem Header="Save Project _As..." />
                 <MenuItem Header="_Export PSD..." />
+                <MenuItem Header="Export image batch..." Click="ExportImageBatch_Click"/>
                 <Separator />
                 <MenuItem Header="_Quit" />
             </MenuItem>
@@ -30,7 +32,6 @@
                 <MenuItem Header="Clear Both Markers" />
             </MenuItem>
             <MenuItem Header="Options">
-                <MenuItem Header="Render Subtitles" IsCheckable="True" IsChecked="True"/>
                 <MenuItem x:Name="SubTracksMenu" Header="Subtitle Track" />
                 <Separator />
                 <MenuItem Header="Preferences..." />

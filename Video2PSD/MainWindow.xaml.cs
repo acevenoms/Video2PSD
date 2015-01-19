@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
@@ -33,6 +35,11 @@ namespace Video2PSD
 
         private bool Muted = false;
 
+        private DirectoryInfo OpenDirectory;
+        private DirectoryInfo SaveDirectory = new DirectoryInfo(Environment.GetFolderPath(Environment.SpecialFolder.MyPictures));
+
+        private ExportImageBatchDialog EIBDialog = new ExportImageBatchDialog(); 
+
         public MainWindow()
         {
             try
@@ -52,6 +59,7 @@ namespace Video2PSD
         private void OpenVideoMenuItem_Click(object sender, RoutedEventArgs e)
         {
             OpenFileDialog ofd = new OpenFileDialog();
+            if(OpenDirectory != null) ofd.InitialDirectory = OpenDirectory.FullName;
             if (ofd.ShowDialog() == true)
             {
                 Title = "Video2PSD - " + ofd.SafeFileName;
@@ -61,6 +69,8 @@ namespace Video2PSD
                 DoPlay();
 
                 RepopulateStreamMenu();
+
+                OpenDirectory = new DirectoryInfo(System.IO.Path.GetDirectoryName(ofd.FileName));
             }
         }
 
@@ -251,6 +261,44 @@ namespace Video2PSD
 
             long newPos = (long)(scalarDesiredLocation * player.GetEndPosition());
             player.SeekAbsolute(newPos);
+        }
+
+        private void SaveSnapshot_Click(object sender, RoutedEventArgs e)
+        {
+            player.Pause();
+            System.Drawing.Image capture = player.GetCapture();
+
+            SaveFileDialog sfd = new SaveFileDialog();
+            sfd.FileName = string.Format("{0}_{1}.png", Title.Substring(12), player.GetCurrentPos());
+            sfd.InitialDirectory = SaveDirectory.FullName;
+            sfd.Filter = "PNG Files (*.png)|*.png";
+            if (sfd.ShowDialog() == true)
+            {
+                capture.Save(sfd.FileName, System.Drawing.Imaging.ImageFormat.Png);
+
+                SaveDirectory = new DirectoryInfo(System.IO.Path.GetDirectoryName(sfd.FileName));
+            }
+            player.Play();
+        }
+
+        private void ExportImageBatch_Click(object sender, RoutedEventArgs e)
+        {
+            player.Pause();
+
+            if (EIBDialog.ShowDialog() == true && MarkIn.HasValue && MarkOut.HasValue)
+            {
+                player.SeekAbsolute(MarkIn.Value);
+                Int64 currPos = player.GetCurrentPos();
+                for(int i = 0; currPos <= MarkOut.Value; ++i)
+                {
+                    Debug.WriteLine("Stepped to: {0} Capping image {1}", currPos, i);
+                    System.Drawing.Image cap = player.GetCapture();
+                    string filename = string.Format(EIBDialog.NameFormatBox.Text, i);
+                    cap.Save(EIBDialog.DirectoryBox.Text + "\\" + filename + ".png", System.Drawing.Imaging.ImageFormat.Png);
+                    player.Step();
+                    currPos = player.GetCurrentPos();
+                }
+            }
         }
     }
 }
