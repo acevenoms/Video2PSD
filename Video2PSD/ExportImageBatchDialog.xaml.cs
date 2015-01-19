@@ -12,6 +12,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using Microsoft.Win32;
+using Ookii.Dialogs.Wpf;
 
 namespace Video2PSD
 {
@@ -37,10 +38,11 @@ namespace Video2PSD
 
         private void BrowseDirectoryButton_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog ofd = new OpenFileDialog();
+            VistaFolderBrowserDialog ofd = new VistaFolderBrowserDialog();
+            ofd.ShowNewFolderButton = true;
             if (ofd.ShowDialog() == true)
             {
-                DirectoryBox.Text = ofd.FileName;
+                DirectoryBox.Text = ofd.SelectedPath;
             }
         }
     }

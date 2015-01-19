@@ -330,7 +330,7 @@ namespace Video2PSD
             //Create the bitmap
             image = new Bitmap(header.Width, header.Height, PixelFormat.Format32bppRgb);
 
-            //Finally, the bitmap data
+            //Finally, copy the bitmap data
             BitmapData imageData = image.LockBits(new Rectangle(0, 0, header.Width, header.Height), ImageLockMode.WriteOnly, PixelFormat.Format32bppRgb);
             CopyMemory(imageData.Scan0, imgBufferUnmanaged + bmihSize, (uint)header.ImageSize);
             image.UnlockBits(imageData);

@@ -18,6 +18,7 @@ using System.Windows.Navigation;
 using System.Windows.Threading;
 using System.Windows.Shapes;
 using Microsoft.Win32;
+using Ookii.Dialogs.Wpf;
 
 namespace Video2PSD
 {
@@ -58,11 +59,11 @@ namespace Video2PSD
 
         private void OpenVideoMenuItem_Click(object sender, RoutedEventArgs e)
         {
-            OpenFileDialog ofd = new OpenFileDialog();
+            VistaOpenFileDialog ofd = new VistaOpenFileDialog();
             if(OpenDirectory != null) ofd.InitialDirectory = OpenDirectory.FullName;
             if (ofd.ShowDialog() == true)
             {
-                Title = "Video2PSD - " + ofd.SafeFileName;
+                Title = "Video2PSD - " + System.IO.Path.GetFileName(ofd.FileName);
 
                 player.OpenFile(ofd.FileName);
                 SeekBarTimer.Start();
@@ -268,7 +269,7 @@ namespace Video2PSD
             player.Pause();
             System.Drawing.Image capture = player.GetCapture();
 
-            SaveFileDialog sfd = new SaveFileDialog();
+            VistaSaveFileDialog sfd = new VistaSaveFileDialog();
             sfd.FileName = string.Format("{0}_{1}.png", Title.Substring(12), player.GetCurrentPos());
             sfd.InitialDirectory = SaveDirectory.FullName;
             sfd.Filter = "PNG Files (*.png)|*.png";
@@ -291,7 +292,7 @@ namespace Video2PSD
                 Int64 currPos = player.GetCurrentPos();
                 for(int i = 0; currPos <= MarkOut.Value; ++i)
                 {
-                    Debug.WriteLine("Stepped to: {0} Capping image {1}", currPos, i);
+                    //Debug.WriteLine("Stepped to: {0} Capping image {1}", currPos, i);
                     System.Drawing.Image cap = player.GetCapture();
                     string filename = string.Format(EIBDialog.NameFormatBox.Text, i);
                     cap.Save(EIBDialog.DirectoryBox.Text + "\\" + filename + ".png", System.Drawing.Imaging.ImageFormat.Png);
