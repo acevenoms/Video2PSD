@@ -346,6 +346,83 @@ namespace Video2PSD
         [DllImport("kernel32.dll", EntryPoint = "CopyMemory", SetLastError = false)]
         private static extern void CopyMemory(IntPtr dest, IntPtr src, uint count);
 
+        /// <summary>
+        /// This function is for applications that are going to capture frames in quick succession.
+        /// The reason this function is to be used instead of having the application itself iterate 
+        /// over frames and capture each one is to avoid memory fragmentation, since the GetCapture 
+        /// function allocates 2 buffers for the image. This function allocates both of those buffers
+        /// only once and resuses them for the entire loop.
+        /// </summary>
+        /// <param name="startFrameTime">The MediaTime value for the first frame</param>
+        /// <param name="endFrameTime">The MediaTime value for the last frame</param>
+        /// <param name="func">A function that takes the iteration count and the frame capture and does whatever with them.</param>
+        public void WithFrameRangeDo(Int64 startFrameTime, Int64 endFrameTime, Action<int,Image> func)
+        {
+            int hr;
+            IBasicVideo madVRVideo = madVR as IBasicVideo;
+
+            int bufferSize = 0;
+            Bitmap image = null;
+            IntPtr imgBuffer = IntPtr.Zero;
+            int bmihSize = 0;
+            BitmapInfoHeader header = new BitmapInfoHeader();
+
+            SeekAbsolute(startFrameTime);
+            for (int i = 0; GetCurrentPos() <= endFrameTime; ++i)
+            {
+                if (i == 0)
+                {
+                    hr = madVRVideo.GetCurrentImage(ref bufferSize, IntPtr.Zero);
+                    DsError.ThrowExceptionForHR(hr);
+
+                    imgBuffer = Marshal.AllocHGlobal(bufferSize);
+                }
+
+                hr = madVRVideo.GetCurrentImage(bufferSize, imgBuffer);
+                DsError.ThrowExceptionForHR(hr);
+
+                if (i == 0)
+                {
+                    //First, copy up just the BitmapInfoHeader
+                    bmihSize = (int)Marshal.ReadIntPtr(imgBuffer);
+                    byte[] bmih = new byte[bmihSize];
+                    Marshal.Copy(imgBuffer, bmih, 0, bmihSize);
+
+                    //Next, read the header data
+                    MemoryStream imageStream = new MemoryStream(bmih);
+                    BinaryReader imageReader = new BinaryReader(imageStream);
+                    header.Size = imageReader.ReadInt32();
+                    header.Width = imageReader.ReadInt32();
+                    header.Height = imageReader.ReadInt32();
+                    header.Planes = imageReader.ReadInt16();
+                    header.BitCount = imageReader.ReadInt16();
+                    header.Compression = imageReader.ReadInt32();
+                    header.ImageSize = imageReader.ReadInt32();
+                    header.XPelsPerMeter = imageReader.ReadInt32();
+                    header.YPelsPerMeter = imageReader.ReadInt32();
+                    header.ClrUsed = imageReader.ReadInt32();
+                    header.ClrImportant = imageReader.ReadInt32();
+
+                    //Create the bitmap
+                    image = new Bitmap(header.Width, header.Height, PixelFormat.Format32bppRgb);
+                }
+
+                //Finally, copy the bitmap data
+                BitmapData imageData = image.LockBits(new Rectangle(0, 0, header.Width, header.Height), ImageLockMode.WriteOnly, PixelFormat.Format32bppRgb);
+                CopyMemory(imageData.Scan0, imgBuffer + bmihSize, (uint)header.ImageSize);
+                image.UnlockBits(imageData);
+
+                //It comes out upside down otherwise
+                image.RotateFlip(RotateFlipType.RotateNoneFlipY);
+
+                func(i,image);
+
+                Step();
+            }
+
+            Marshal.FreeHGlobal(imgBuffer);
+        }
+
         private void VideoWindowSizeChanged(object sender, EventArgs e) 
         {
             if (madVR == null) return;

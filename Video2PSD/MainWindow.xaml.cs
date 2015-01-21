@@ -288,17 +288,11 @@ namespace Video2PSD
 
             if (EIBDialog.ShowDialog() == true && MarkIn.HasValue && MarkOut.HasValue)
             {
-                player.SeekAbsolute(MarkIn.Value);
-                Int64 currPos = player.GetCurrentPos();
-                for(int i = 0; currPos <= MarkOut.Value; ++i)
+                player.WithFrameRangeDo(MarkIn.Value, MarkOut.Value, (i,cap) => 
                 {
-                    //Debug.WriteLine("Stepped to: {0} Capping image {1}", currPos, i);
-                    System.Drawing.Image cap = player.GetCapture();
                     string filename = string.Format(EIBDialog.NameFormatBox.Text, i);
                     cap.Save(EIBDialog.DirectoryBox.Text + "\\" + filename + ".png", System.Drawing.Imaging.ImageFormat.Png);
-                    player.Step();
-                    currPos = player.GetCurrentPos();
-                }
+                });
             }
         }
     }
