@@ -233,6 +233,18 @@ namespace Video2PSD
             return pos;
         }
 
+        public Size GetFrameDimensions()
+        {
+            IBasicVideo madVRVideo = madVR as IBasicVideo;
+            int hr;
+            int width, height;
+            hr = madVRVideo.get_VideoWidth(out width);
+            DsError.ThrowExceptionForHR(hr);
+            hr = madVRVideo.get_VideoHeight(out height);
+            DsError.ThrowExceptionForHR(hr);
+            return new Size(width, height);
+        }
+
         public void SeekAbsolute(Int64 pos) 
         {
             int hr;

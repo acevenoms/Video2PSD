@@ -21,7 +21,7 @@
                 <MenuItem Header="Save Snapshot..." Click="SaveSnapshot_Click" />
                 <MenuItem Header="_Save Project" />
                 <MenuItem Header="Save Project _As..." />
-                <MenuItem Header="_Export PSD..." />
+                <MenuItem Header="_Export PSD..." Click="ExportPSD_Click" />
                 <MenuItem Header="Export image batch..." Click="ExportImageBatch_Click"/>
                 <Separator />
                 <MenuItem Header="_Quit" />

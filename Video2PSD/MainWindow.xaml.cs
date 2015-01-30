@@ -19,6 +19,7 @@ using System.Windows.Threading;
 using System.Windows.Shapes;
 using Microsoft.Win32;
 using Ookii.Dialogs.Wpf;
+using PhotoshopFile;
 
 namespace Video2PSD
 {
@@ -293,6 +294,47 @@ namespace Video2PSD
                     string filename = string.Format(EIBDialog.NameFormatBox.Text, i);
                     cap.Save(EIBDialog.DirectoryBox.Text + "\\" + filename + ".png", System.Drawing.Imaging.ImageFormat.Png);
                 });
+            }
+        }
+
+        private void ExportPSD_Click(object sender, RoutedEventArgs e)
+        {
+            player.Pause();
+
+            VistaSaveFileDialog sfd = new VistaSaveFileDialog();
+            sfd.FileName = string.Format("{0}_{1}-{2}.psd", Title.Substring(12), MarkIn, MarkOut);
+            sfd.InitialDirectory = SaveDirectory.FullName;
+            sfd.Filter = "Adobe Photoshop Document (*.psd)|*.psd";
+            if (sfd.ShowDialog() == true)
+            {
+                /*
+                PsdFile psd = new PsdFile();
+                psd.BitDepth = 8;
+                psd.ColorMode = PsdColorMode.RGB;
+                psd.ChannelCount = 4;
+                psd.Resolution = new ResolutionInfo()
+                {
+                    WidthDisplayUnit = ResolutionInfo.Unit.Inches,
+                    HeightDisplayUnit = ResolutionInfo.Unit.Inches,
+
+                    HResDisplayUnit = ResolutionInfo.ResUnit.PxPerInch,
+                    VResDisplayUnit = ResolutionInfo.ResUnit.PxPerInch,
+
+                    HDpi = new UFixed16_16(72.0),
+                    VDpi = new UFixed16_16(72.0),
+                };
+                psd.ImageCompression = ImageCompression.Rle;
+                System.Drawing.Size frameSize = player.GetFrameDimensions();
+                psd.ColumnCount = frameSize.Width;
+                psd.RowCount = frameSize.Height;
+
+                psd.Save(sfd.FileName, Encoding.Default);
+                */
+
+                PsdFile referenceDoc = new PsdFile("referencedoc.psd", Encoding.Default);
+                PsdFile referenceDoc2 = new PsdFile("referencedoc2.psd", Encoding.Default);
+
+                SaveDirectory = new DirectoryInfo(System.IO.Path.GetDirectoryName(sfd.FileName));
             }
         }
     }
