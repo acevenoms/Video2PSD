@@ -124,6 +124,16 @@ namespace PhotoshopFile
       return val;
     }
 
+    public double ReadDouble()
+    {
+      var val = reader.ReadDouble();
+      unsafe
+      {
+          Util.SwapBytes((byte*)&val, 8);
+      }
+      return val;
+    }
+
     //////////////////////////////////////////////////////////////////
 
     /// <summary>

@@ -62,6 +62,14 @@ namespace PhotoshopFile
       }
     }
 
+    unsafe static public void Copy(byte* src, byte* dst, int stride, int count)
+    {
+        for (byte* s = src; ((s-src)/stride)<count; s += stride )
+        {
+            *(dst + ((s - src) / stride)) = *s;
+        }
+    }
+
     /////////////////////////////////////////////////////////////////////////// 
 
     /// <summary>

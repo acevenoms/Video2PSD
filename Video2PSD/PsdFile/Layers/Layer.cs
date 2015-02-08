@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -208,6 +209,7 @@ namespace PhotoshopFile
 
           var ch = new Channel(id, this);
           ch.ImageData = new byte[size];
+          ch.ImageCompression = this.PsdFile.ImageCompression;
           unsafe
           {
             fixed (byte* ptr = &ch.ImageData[0])
@@ -219,6 +221,32 @@ namespace PhotoshopFile
           this.Channels.Add(ch);
         }
       }
+    }
+
+    public void CreateChannelsFromImage(Bitmap image)
+    {
+        this.CreateMissingChannels();
+
+        BitmapData data = image.LockBits(new Rectangle(0, 0, image.Width, image.Height), ImageLockMode.ReadOnly, image.PixelFormat);
+        int channelStride = 4; //Since the pixel format should always be 32bpprgb
+        unsafe
+        {
+            fixed(byte* chData = &this.Channels.GetId(2).ImageData[0])
+            {
+                Util.Copy((byte*)data.Scan0.ToPointer(), chData, channelStride, this.Channels.GetId(2).ImageData.Length);
+            }
+
+            fixed (byte* chData = &this.Channels.GetId(1).ImageData[0])
+            {
+                Util.Copy((byte*)data.Scan0.ToPointer() + 1, chData, channelStride, this.Channels.GetId(1).ImageData.Length);
+            }
+
+            fixed (byte* chData = &this.Channels.GetId(0).ImageData[0])
+            {
+                Util.Copy((byte*)data.Scan0.ToPointer() + 2, chData, channelStride, this.Channels.GetId(0).ImageData.Length);
+            }
+        }
+        image.UnlockBits(data);
     }
 
     ///////////////////////////////////////////////////////////////////////////

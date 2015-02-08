@@ -101,6 +101,7 @@ namespace PhotoshopFile
     AutoSaveFormat = 1087,
     PathInfo = 2000,  // 2000-2999: Path Information
     ClippingPathName = 2999,
+    AnimationInfo = 4000,
     LightroomWorkflow = 8000,
     PrintFlagsInfo = 10000
   }
@@ -201,6 +202,9 @@ namespace PhotoshopFile
           break;
         case ResourceID.VersionInfo:
           resource = new VersionInfo(reader, name);
+          break;
+        case ResourceID.AnimationInfo:
+          resource = new AnimationInfo(reader, name, dataLength);
           break;
         default:
           resource = new RawImageResource(reader, signature, resourceId, name, dataLength);

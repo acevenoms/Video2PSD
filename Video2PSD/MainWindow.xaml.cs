@@ -307,11 +307,10 @@ namespace Video2PSD
             sfd.Filter = "Adobe Photoshop Document (*.psd)|*.psd";
             if (sfd.ShowDialog() == true)
             {
-                /*
                 PsdFile psd = new PsdFile();
                 psd.BitDepth = 8;
                 psd.ColorMode = PsdColorMode.RGB;
-                psd.ChannelCount = 4;
+                psd.ChannelCount = 3;
                 psd.Resolution = new ResolutionInfo()
                 {
                     WidthDisplayUnit = ResolutionInfo.Unit.Inches,
@@ -320,19 +319,37 @@ namespace Video2PSD
                     HResDisplayUnit = ResolutionInfo.ResUnit.PxPerInch,
                     VResDisplayUnit = ResolutionInfo.ResUnit.PxPerInch,
 
-                    HDpi = new UFixed16_16(72.0),
-                    VDpi = new UFixed16_16(72.0),
+                    HDpi = new UFixed16_16(96.0),
+                    VDpi = new UFixed16_16(96.0),
                 };
                 psd.ImageCompression = ImageCompression.Rle;
                 System.Drawing.Size frameSize = player.GetFrameDimensions();
                 psd.ColumnCount = frameSize.Width;
                 psd.RowCount = frameSize.Height;
 
-                psd.Save(sfd.FileName, Encoding.Default);
-                */
+                System.Drawing.Bitmap lastFrame = null;
+                player.WithFrameRangeDo(MarkIn.Value, MarkOut.Value, (i, cap) => {
+                    Layer toAdd = new Layer(psd);
+                    toAdd.Name = "Frame " + i.ToString();
+                    toAdd.Opacity = 255;
+                    toAdd.Visible = true;
+                    toAdd.Rect = new System.Drawing.Rectangle(0, 0, frameSize.Width, frameSize.Height);
+                    toAdd.Clipping = false;
+                    toAdd.CreateChannelsFromImage((System.Drawing.Bitmap)cap);
+                    toAdd.Masks = new MaskInfo();
+                    toAdd.BlendingRangesData = new BlendingRanges(toAdd);
+                    psd.Layers.Add(toAdd);
+                    lastFrame = (System.Drawing.Bitmap)cap;
+                });
 
-                PsdFile referenceDoc = new PsdFile("referencedoc.psd", Encoding.Default);
-                PsdFile referenceDoc2 = new PsdFile("referencedoc2.psd", Encoding.Default);
+                psd.BaseLayer = new Layer(psd);
+                psd.BaseLayer.Rect = new System.Drawing.Rectangle(0, 0, frameSize.Width, frameSize.Height);
+                psd.BaseLayer.CreateChannelsFromImage(lastFrame);
+
+                psd.Save(sfd.FileName, Encoding.Default);
+                
+                //PsdFile referenceDoc = new PsdFile("referencedoc.psd", Encoding.Default);
+                //PsdFile referenceDoc2 = new PsdFile("referencedoc2.psd", Encoding.Default);
 
                 SaveDirectory = new DirectoryInfo(System.IO.Path.GetDirectoryName(sfd.FileName));
             }
