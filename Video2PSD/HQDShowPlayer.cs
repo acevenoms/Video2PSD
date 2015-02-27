@@ -431,7 +431,6 @@ namespace Video2PSD
 
                 Step();
             }
-
             Marshal.FreeHGlobal(imgBuffer);
         }
 
@@ -511,9 +510,17 @@ namespace Video2PSD
             //DsError.ThrowExceptionForHR(hr);
 
             //DirectVobSub
-            DirectVobSub = new DirectVobSub() as IBaseFilter;
-            hr = MyFilterGraph.AddFilter(DirectVobSub, "DirectVobSub (auto-loading version)");
-            DsError.ThrowExceptionForHR(hr);
+            //Sometimes people gif raws
+            IPin subsOut;
+            hr = LAVSplitter.FindPin("Subtitle", out subsOut);
+            bool hasSubTrack = (hr == 0);
+
+            if (hasSubTrack)
+            {
+                DirectVobSub = new DirectVobSub() as IBaseFilter;
+                hr = MyFilterGraph.AddFilter(DirectVobSub, "DirectVobSub (auto-loading version)");
+                DsError.ThrowExceptionForHR(hr);
+            }
 
             IPin compressedVideoOut;
             hr = LAVSplitter.FindPin("Video", out compressedVideoOut);
@@ -521,9 +528,6 @@ namespace Video2PSD
             //IPin compressedAudioOut;
             //hr = LAVSplitter.FindPin("Audio", out compressedAudioOut);
             //DsError.ThrowExceptionForHR(hr);
-            IPin subsOut;
-            hr = LAVSplitter.FindPin("Subtitle", out subsOut);
-            DsError.ThrowExceptionForHR(hr);
             IPin decompressedVideoOut;
             hr = LAVVideoDecoder.FindPin("Out", out decompressedVideoOut);
             DsError.ThrowExceptionForHR(hr);
@@ -533,63 +537,81 @@ namespace Video2PSD
             //IPin compressedAudioIn;
             //hr = LAVAudioDecoder.FindPin("In", out compressedAudioIn);
             //DsError.ThrowExceptionForHR(hr);
-
-            IPin subsIn = null;
-            // For some reason, normal method of finding pins doesn't work on DirectVobSub, so we manually loop and query for it.
-            //hr = DirectVobSub.FindPin("Input", out subsIn);
-            //DsError.ThrowExceptionForHR(hr);
-
-            IEnumPins pins;
-            IPin [] tempPins = new IPin[1];
-            DirectVobSub.EnumPins(out pins);
-            while (pins.Next(1, tempPins, IntPtr.Zero) == 0)
-            {
-                string pinName;
-                PinDirection pinDir;
-                tempPins[0].QueryId(out pinName);
-                tempPins[0].QueryDirection(out pinDir);
-
-                if (pinName == "Input") subsIn = tempPins[0];
-                //Debug.Print("Pin Found: {0} {1}", pinDir == PinDirection.Input ? ">" : "<", pinName);
-            }
-
-            IPin decompressedVideoIn;
-            hr = DirectVobSub.FindPin("In", out decompressedVideoIn);
-            DsError.ThrowExceptionForHR(hr);
             hr = MyFilterGraph.Connect(compressedVideoOut, compressedVideoIn);
             DsError.ThrowExceptionForHR(hr);
-            hr = MyFilterGraph.Connect(decompressedVideoOut, decompressedVideoIn);
-            DsError.ThrowExceptionForHR(hr);
-            //hr = MyFilterGraph.Connect(compressedAudioOut, compressedAudioIn);
-            //DsError.ThrowExceptionForHR(hr);
-            hr = MyFilterGraph.Connect(subsOut, subsIn);
-            DsError.ThrowExceptionForHR(hr);
-            Marshal.ReleaseComObject(compressedVideoOut);
-            Marshal.ReleaseComObject(compressedVideoIn);
-            Marshal.ReleaseComObject(decompressedVideoOut);
-            Marshal.ReleaseComObject(decompressedVideoIn);
-            //Marshal.ReleaseComObject(compressedAudioOut);
-            //Marshal.ReleaseComObject(compressedAudioIn);
-            Marshal.ReleaseComObject(subsOut);
-            Marshal.ReleaseComObject(subsIn);
 
+            if (hasSubTrack)
+            {
+                IPin subsIn = null;
+                // For some reason, normal method of finding pins doesn't work on DirectVobSub, so we manually loop and query for it.
+                //hr = DirectVobSub.FindPin("Input", out subsIn);
+                //DsError.ThrowExceptionForHR(hr);
+
+                IEnumPins pins;
+                IPin[] tempPins = new IPin[1];
+                DirectVobSub.EnumPins(out pins);
+                while (pins.Next(1, tempPins, IntPtr.Zero) == 0)
+                {
+                    string pinName;
+                    PinDirection pinDir;
+                    tempPins[0].QueryId(out pinName);
+                    tempPins[0].QueryDirection(out pinDir);
+
+                    if (pinName == "Input") subsIn = tempPins[0];
+                    //Debug.Print("Pin Found: {0} {1}", pinDir == PinDirection.Input ? ">" : "<", pinName);
+                }
+            
+
+                IPin decompressedVideoIn;
+                hr = DirectVobSub.FindPin("In", out decompressedVideoIn);
+                DsError.ThrowExceptionForHR(hr);
+                hr = MyFilterGraph.Connect(decompressedVideoOut, decompressedVideoIn);
+                DsError.ThrowExceptionForHR(hr);
+                //hr = MyFilterGraph.Connect(compressedAudioOut, compressedAudioIn);
+                //DsError.ThrowExceptionForHR(hr);
+                hr = MyFilterGraph.Connect(subsOut, subsIn);
+                DsError.ThrowExceptionForHR(hr);
+                Marshal.ReleaseComObject(compressedVideoOut);
+                Marshal.ReleaseComObject(compressedVideoIn);
+                Marshal.ReleaseComObject(decompressedVideoOut);
+                Marshal.ReleaseComObject(decompressedVideoIn);
+                //Marshal.ReleaseComObject(compressedAudioOut);
+                //Marshal.ReleaseComObject(compressedAudioIn);
+                Marshal.ReleaseComObject(subsOut);
+                Marshal.ReleaseComObject(subsIn);
+            }
             //madVR
             madVR = new madVR() as IBaseFilter;
             hr = MyFilterGraph.AddFilter(madVR, "madVR");
             DsError.ThrowExceptionForHR(hr);
             IVideoWindow madVRWindow = madVR as IVideoWindow;
 
-            IPin subbedVideoOut;
-            hr = DirectVobSub.FindPin("Out", out subbedVideoOut);
-            DsError.ThrowExceptionForHR(hr);
-            IPin subbedVideoIn;
-            hr = madVR.FindPin("In", out subbedVideoIn);
-            DsError.ThrowExceptionForHR(hr);
-            hr = MyFilterGraph.Connect(subbedVideoOut, subbedVideoIn);
-            DsError.ThrowExceptionForHR(hr);
-            Marshal.ReleaseComObject(subbedVideoOut);
-            Marshal.ReleaseComObject(subbedVideoIn);
+            if (hasSubTrack)
+            {
+                IPin subbedVideoOut;
+                hr = DirectVobSub.FindPin("Out", out subbedVideoOut);
+                DsError.ThrowExceptionForHR(hr);
 
+                IPin subbedVideoIn;
+                hr = madVR.FindPin("In", out subbedVideoIn);
+                DsError.ThrowExceptionForHR(hr);
+                hr = MyFilterGraph.Connect(subbedVideoOut, subbedVideoIn);
+                DsError.ThrowExceptionForHR(hr);
+                Marshal.ReleaseComObject(subbedVideoOut);
+                Marshal.ReleaseComObject(subbedVideoIn);
+            }
+            else
+            {
+                IPin decompressedVideoIn;
+                hr = madVR.FindPin("In", out decompressedVideoIn);
+                DsError.ThrowExceptionForHR(hr);
+                hr = MyFilterGraph.Connect(decompressedVideoOut, decompressedVideoIn);
+                DsError.ThrowExceptionForHR(hr);
+                Marshal.ReleaseComObject(compressedVideoOut);
+                Marshal.ReleaseComObject(compressedVideoIn);
+                Marshal.ReleaseComObject(decompressedVideoOut);
+                Marshal.ReleaseComObject(decompressedVideoIn);
+            }
             //madVR must be configured after connecting the pins
             hr = madVRWindow.put_Owner(RenderWindow.Handle);
             DsError.ThrowExceptionForHR(hr);
